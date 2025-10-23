@@ -1,0 +1,6 @@
+python inventory_api.py
+
+eso se ejecuta en la terminal, para que funcione el backend.
+
+
+La BDD es InventarioDB

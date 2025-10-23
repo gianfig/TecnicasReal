@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestión de Inventario</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e1e5e9;
+        }
+
+        .tab {
+            padding: 15px 25px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            color: #4facfe;
+            border-bottom-color: #4facfe;
+        }
+
+        .tab:hover {
+            color: #4facfe;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .form-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #4facfe;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #51cf66 0%, #40c057 100%);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ffd43b 0%, #fab005 100%);
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, #74c0fc 0%, #339af0 100%);
+        }
+
+        .data-table {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .table-header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 20px;
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e1e5e9;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: 600;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .stock-low {
+            background: #fff3cd !important;
+            color: #856404;
+        }
+
+        .stock-critical {
+            background: #f8d7da !important;
+            color: #721c24;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .product-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .product-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border: 2px solid #e1e5e9;
+            transition: all 0.3s;
+        }
+
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+
+        .product-card.stock-low {
+            border-color: #ffd43b;
+            background: #fffbf0;
+        }
+
+        .product-card.stock-critical {
+            border-color: #ff6b6b;
+            background: #fff5f5;
+        }
+
+        .product-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .product-name {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+        }
+
+        .product-sku {
+            font-size: 0.9em;
+            color: #666;
+            background: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .product-info {
+            margin-bottom: 15px;
+        }
+
+        .product-price {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #4facfe;
+            margin-bottom: 5px;
+        }
+
+        .product-stock {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .product-category {
+            font-size: 0.9em;
+            color: #666;
+            background: #e3f2fd;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .product-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .product-actions button {
+            flex: 1;
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+
+        .filter-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .category-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .category-stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .category-stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+        }
+
+        .category-stat-card.selected {
+            background: #e3f2fd;
+            border: 2px solid #4facfe;
+        }
+
+        .category-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .category-count {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #4facfe;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #4facfe;
+        }
+
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 10px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .tabs {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📦 Sistema de Gestión de Inventario</h1>
+            <p>Gestiona productos, categorías, proveedores y movimientos de stock</p>
+        </div>
+        
+        <div class="content">
+            <!-- Pestañas de navegación -->
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('dashboard')">Dashboard</button>
+                <button class="tab" onclick="showTab('productos')">Productos</button>
+                <button class="tab" onclick="showTab('categorias')">Categorías</button>
+                <button class="tab" onclick="showTab('proveedores')">Proveedores</button>
+                <button class="tab" onclick="showTab('movimientos')">Movimientos</button>
+                <button class="tab" onclick="showTab('reportes')">Reportes</button>
+            </div>
+
+            <!-- Dashboard -->
+            <div id="dashboard" class="tab-content active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="total-productos">-</div>
+                        <div class="stat-label">Total Productos</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="stock-bajo">-</div>
+                        <div class="stat-label">Stock Bajo</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="total-categorias">-</div>
+                        <div class="stat-label">Categorías</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="total-proveedores">-</div>
+                        <div class="stat-label">Proveedores</div>
+                    </div>
+                </div>
+                
+                <div class="form-section">
+                    <h2>Vista de Productos por Categoría</h2>
+                    <div class="form-group">
+                        <label for="dashboard-categoria-filter">Filtrar por Categoría:</label>
+                        <select id="dashboard-categoria-filter" onchange="filterProductsByCategory()">
+                            <option value="">Todas las categorías</option>
+                        </select>
+                    </div>
+                    <div class="button-group">
+                        <button onclick="loadData('productos')">Cargar Productos</button>
+                        <button onclick="loadData('categorias')">Cargar Categorías</button>
+                        <button onclick="loadData('proveedores')">Cargar Proveedores</button>
+                        <button onclick="loadData('movimientos')">Cargar Movimientos</button>
+                        <button onclick="loadStockBajo()">Ver Stock Bajo</button>
+                    </div>
+                </div>
+
+                <div class="data-table">
+                    <div class="table-header">Productos por Categoría</div>
+                    <div id="dashboard-productos">
+                        <div class="loading">Haz clic en "Cargar Productos" para ver los productos</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Productos -->
+            <div id="productos" class="tab-content">
+                <div class="form-section">
+                    <h2>Filtros y Búsqueda</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="producto-search">Buscar producto:</label>
+                            <input type="text" id="producto-search" placeholder="Nombre, SKU o descripción..." onkeyup="filterProducts()">
+                        </div>
+                        <div class="form-group">
+                            <label for="producto-categoria-filter">Filtrar por categoría:</label>
+                            <select id="producto-categoria-filter" onchange="filterProducts()">
+                                <option value="">Todas las categorías</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="producto-stock-filter">Filtrar por stock:</label>
+                            <select id="producto-stock-filter" onchange="filterProducts()">
+                                <option value="">Todos</option>
+                                <option value="bajo">Stock bajo</option>
+                                <option value="critico">Stock crítico</option>
+                                <option value="normal">Stock normal</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="producto-proveedor-filter">Filtrar por proveedor:</label>
+                            <select id="producto-proveedor-filter" onchange="filterProducts()">
+                                <option value="">Todos los proveedores</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="button-group">
+                        <button onclick="clearFilters()">Limpiar Filtros</button>
+                        <button onclick="loadData('productos')">Recargar Productos</button>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>Gestión de Productos</h2>
+                    <form id="productoForm">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="producto-nombre">Nombre:</label>
+                                <input type="text" id="producto-nombre" name="nombre" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="producto-sku">Código SKU:</label>
+                                <input type="text" id="producto-sku" name="codigo_sku">
+                            </div>
+                            <div class="form-group">
+                                <label for="producto-precio">Precio:</label>
+                                <input type="number" id="producto-precio" name="precio" step="0.01" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="producto-costo">Costo:</label>
+                                <input type="number" id="producto-costo" name="costo" step="0.01" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="producto-stock">Stock Actual:</label>
+                                <input type="number" id="producto-stock" name="cantidad_stock" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label for="producto-stock-min">Stock Mínimo:</label>
+                                <input type="number" id="producto-stock-min" name="stock_minimo" min="0" value="5">
+                            </div>
+                            <div class="form-group">
+                                <label for="producto-categoria">Categoría:</label>
+                                <select id="producto-categoria" name="categoria_id" required>
+                                    <option value="">Seleccionar categoría...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="producto-proveedor">Proveedor:</label>
+                                <select id="producto-proveedor" name="proveedor_id">
+                                    <option value="">Seleccionar proveedor...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="producto-descripcion">Descripción:</label>
+                            <textarea id="producto-descripcion" name="descripcion" rows="3"></textarea>
+                        </div>
+                        <div class="button-group">
+                            <button type="submit" id="producto-submit">Crear Producto</button>
+                            <button type="button" onclick="clearProductoForm()">Limpiar</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="data-table">
+                    <div class="table-header">Lista de Productos</div>
+                    <div id="productos-list">
+                        <div class="loading">Haz clic en "Cargar Productos" para ver los productos</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Categorías -->
+            <div id="categorias" class="tab-content">
+                <div class="form-section">
+                    <h2>Gestión de Categorías</h2>
+                    <form id="categoriaForm">
+                        <div class="form-group">
+                            <label for="categoria-nombre">Nombre:</label>
+                            <input type="text" id="categoria-nombre" name="nombre" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="categoria-descripcion">Descripción:</label>
+                            <textarea id="categoria-descripcion" name="descripcion" rows="3"></textarea>
+                        </div>
+                        <div class="button-group">
+                            <button type="submit">Crear Categoría</button>
+                            <button type="button" onclick="clearCategoriaForm()">Limpiar</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="data-table">
+                    <div class="table-header">Lista de Categorías</div>
+                    <div id="categorias-list">
+                        <div class="loading">Haz clic en "Cargar Categorías" para ver las categorías</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Proveedores -->
+            <div id="proveedores" class="tab-content">
+                <div class="form-section">
+                    <h2>Gestión de Proveedores</h2>
+                    <form id="proveedorForm">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="proveedor-nombre">Nombre:</label>
+                                <input type="text" id="proveedor-nombre" name="nombre" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="proveedor-contacto">Contacto:</label>
+                                <input type="text" id="proveedor-contacto" name="contacto">
+                            </div>
+                            <div class="form-group">
+                                <label for="proveedor-email">Email:</label>
+                                <input type="email" id="proveedor-email" name="email">
+                            </div>
+                            <div class="form-group">
+                                <label for="proveedor-telefono">Teléfono:</label>
+                                <input type="text" id="proveedor-telefono" name="telefono">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="proveedor-direccion">Dirección:</label>
+                            <textarea id="proveedor-direccion" name="direccion" rows="2"></textarea>
+                        </div>
+                        <div class="button-group">
+                            <button type="submit">Crear Proveedor</button>
+                            <button type="button" onclick="clearProveedorForm()">Limpiar</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="data-table">
+                    <div class="table-header">Lista de Proveedores</div>
+                    <div id="proveedores-list">
+                        <div class="loading">Haz clic en "Cargar Proveedores" para ver los proveedores</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Movimientos -->
+            <div id="movimientos" class="tab-content">
+                <div class="form-section">
+                    <h2>Registrar Movimiento de Stock</h2>
+                    <form id="movimientoForm">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="movimiento-producto">Producto:</label>
+                                <select id="movimiento-producto" name="producto_id" required>
+                                    <option value="">Seleccionar producto...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="movimiento-tipo">Tipo de Movimiento:</label>
+                                <select id="movimiento-tipo" name="tipo_movimiento" required>
+                                    <option value="">Seleccionar tipo...</option>
+                                    <option value="ENTRADA">Entrada</option>
+                                    <option value="SALIDA">Salida</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="movimiento-cantidad">Cantidad:</label>
+                                <input type="number" id="movimiento-cantidad" name="cantidad" min="1" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="movimiento-referencia">Número de Referencia:</label>
+                                <input type="text" id="movimiento-referencia" name="numero_referencia">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="movimiento-motivo">Motivo:</label>
+                            <textarea id="movimiento-motivo" name="motivo" rows="2"></textarea>
+                        </div>
+                        <div class="button-group">
+                            <button type="submit">Registrar Movimiento</button>
+                            <button type="button" onclick="clearMovimientoForm()">Limpiar</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="data-table">
+                    <div class="table-header">Historial de Movimientos</div>
+                    <div id="movimientos-list">
+                        <div class="loading">Haz clic en "Cargar Movimientos" para ver el historial</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reportes -->
+            <div id="reportes" class="tab-content">
+                <div class="form-section">
+                    <h2>Reportes de Inventario</h2>
+                    <div class="button-group">
+                        <button onclick="loadStockBajo()">Ver Stock Bajo</button>
+                        <button onclick="loadData('productos')">Todos los Productos</button>
+                        <button onclick="loadData('movimientos')">Movimientos Recientes</button>
+                    </div>
+                </div>
+
+                <div class="data-table">
+                    <div class="table-header">Reporte de Stock Bajo</div>
+                    <div id="reportes-list">
+                        <div class="loading">Haz clic en "Ver Stock Bajo" para generar el reporte</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estado de la API -->
+            <div id="status"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000';
+        let editingProductoId = null;
+        let allProducts = [];
+        let allCategories = [];
+        let allSuppliers = [];
+
+        // Función para mostrar mensajes de estado
+        function showStatus(message, type = 'success') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+            setTimeout(() => {
+                statusDiv.innerHTML = '';
+            }, 5000);
+        }
+
+        // Función para hacer peticiones a la API
+        async function apiRequest(endpoint, method = 'GET', data = null) {
+            try {
+                const options = {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                };
+
+                if (data) {
+                    options.body = JSON.stringify(data);
+                }
+
+                const response = await fetch(`${API_BASE}${endpoint}`, options);
+                
+                if (!response.ok) {
+                    throw new Error(`Error ${response.status}: ${response.statusText}`);
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error('Error en la petición:', error);
+                showStatus(`Error: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        // Función para cambiar pestañas
+        function showTab(tabName) {
+            // Ocultar todas las pestañas
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remover clase active de todos los tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Mostrar la pestaña seleccionada
+            document.getElementById(tabName).classList.add('active');
+            
+            // Agregar clase active al tab clickeado
+            event.target.classList.add('active');
+            
+            // Cargar datos si es necesario
+            if (tabName === 'dashboard') {
+                loadDashboard();
+            }
+        }
+
+        // Cargar datos del dashboard
+        async function loadDashboard() {
+            try {
+                const [productos, categorias, proveedores, stockBajo] = await Promise.all([
+                    apiRequest('/productos'),
+                    apiRequest('/categorias'),
+                    apiRequest('/proveedores'),
+                    apiRequest('/reportes/stock-bajo')
+                ]);
+
+                // Guardar datos globalmente
+                allProducts = productos;
+                allCategories = categorias;
+                allSuppliers = proveedores;
+
+                document.getElementById('total-productos').textContent = productos.length;
+                document.getElementById('total-categorias').textContent = categorias.length;
+                document.getElementById('total-proveedores').textContent = proveedores.length;
+                document.getElementById('stock-bajo').textContent = stockBajo.length;
+
+                // Cargar filtros del dashboard
+                loadDashboardFilters();
+                
+                // Mostrar productos en el dashboard
+                displayDashboardProducts(productos);
+
+                showStatus('Dashboard actualizado correctamente');
+            } catch (error) {
+                showStatus('Error cargando dashboard', 'error');
+            }
+        }
+
+        // Cargar filtros del dashboard
+        function loadDashboardFilters() {
+            const categoriaFilter = document.getElementById('dashboard-categoria-filter');
+            categoriaFilter.innerHTML = '<option value="">Todas las categorías</option>';
+            
+            allCategories.forEach(cat => {
+                categoriaFilter.innerHTML += `<option value="${cat.id}">${cat.nombre}</option>`;
+            });
+        }
+
+        // Mostrar productos en el dashboard
+        function displayDashboardProducts(productos) {
+            const container = document.getElementById('dashboard-productos');
+            
+            if (productos.length === 0) {
+                container.innerHTML = '<div class="loading">No hay productos disponibles</div>';
+                return;
+            }
+
+            // Agrupar productos por categoría
+            const productosPorCategoria = {};
+            productos.forEach(producto => {
+                const categoria = producto.categoria_nombre || 'Sin categoría';
+                if (!productosPorCategoria[categoria]) {
+                    productosPorCategoria[categoria] = [];
+                }
+                productosPorCategoria[categoria].push(producto);
+            });
+
+            let html = '<div class="category-stats">';
+            
+            // Mostrar estadísticas por categoría
+            Object.keys(productosPorCategoria).forEach(categoria => {
+                const productos = productosPorCategoria[categoria];
+                const stockBajo = productos.filter(p => p.cantidad_stock <= p.stock_minimo).length;
+                
+                html += `
+                    <div class="category-stat-card" onclick="filterProductsByCategory('${categoria}')">
+                        <div class="category-name">${categoria}</div>
+                        <div class="category-count">${productos.length}</div>
+                        <div style="font-size: 0.8em; color: #666;">
+                            ${stockBajo > 0 ? `${stockBajo} con stock bajo` : 'Stock normal'}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+
+            // Mostrar productos en tarjetas
+            html += '<div class="product-cards">';
+            productos.forEach(producto => {
+                const stockClass = producto.cantidad_stock <= producto.stock_minimo ? 
+                    (producto.cantidad_stock === 0 ? 'stock-critical' : 'stock-low') : '';
+                
+                html += `
+                    <div class="product-card ${stockClass}">
+                        <div class="product-header">
+                            <h3 class="product-name">${producto.nombre}</h3>
+                            ${producto.codigo_sku ? `<span class="product-sku">${producto.codigo_sku}</span>` : ''}
+                        </div>
+                        <div class="product-info">
+                            <div class="product-price">$${producto.precio.toFixed(2)}</div>
+                            <div class="product-stock">
+                                <span class="badge ${producto.cantidad_stock <= producto.stock_minimo ? 'badge-danger' : 'badge-success'}">
+                                    Stock: ${producto.cantidad_stock}
+                                </span>
+                                ${producto.cantidad_stock <= producto.stock_minimo ? '⚠️' : ''}
+                            </div>
+                            <div class="product-category">${producto.categoria_nombre || 'Sin categoría'}</div>
+                        </div>
+                        <div class="product-actions">
+                            <button onclick="editProducto(${producto.id})" class="btn-warning">Editar</button>
+                            <button onclick="deleteProducto(${producto.id})" class="btn-danger">Eliminar</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // Filtrar productos por categoría en el dashboard
+        function filterProductsByCategory(categoriaNombre = null) {
+            if (!categoriaNombre) {
+                const select = document.getElementById('dashboard-categoria-filter');
+                categoriaNombre = select.value;
+            }
+
+            let productosFiltrados = allProducts;
+            
+            if (categoriaNombre) {
+                if (categoriaNombre === '') {
+                    productosFiltrados = allProducts;
+                } else {
+                    // Buscar por ID de categoría
+                    const categoriaId = parseInt(categoriaNombre);
+                    productosFiltrados = allProducts.filter(p => p.categoria_id === categoriaId);
+                }
+            }
+
+            displayDashboardProducts(productosFiltrados);
+        }
+
+        // Cargar datos genéricos
+        async function loadData(type) {
+            try {
+                const data = await apiRequest(`/${type}`);
+                
+                // Guardar datos globalmente si es necesario
+                if (type === 'productos') {
+                    allProducts = data;
+                    loadProductFilters();
+                } else if (type === 'categorias') {
+                    allCategories = data;
+                } else if (type === 'proveedores') {
+                    allSuppliers = data;
+                }
+                
+                displayData(type, data);
+                showStatus(`${type.charAt(0).toUpperCase() + type.slice(1)} cargados correctamente`);
+            } catch (error) {
+                showStatus(`Error cargando ${type}`, 'error');
+            }
+        }
+
+        // Cargar filtros de productos
+        function loadProductFilters() {
+            // Cargar categorías
+            const categoriaFilter = document.getElementById('producto-categoria-filter');
+            categoriaFilter.innerHTML = '<option value="">Todas las categorías</option>';
+            allCategories.forEach(cat => {
+                categoriaFilter.innerHTML += `<option value="${cat.id}">${cat.nombre}</option>`;
+            });
+
+            // Cargar proveedores
+            const proveedorFilter = document.getElementById('producto-proveedor-filter');
+            proveedorFilter.innerHTML = '<option value="">Todos los proveedores</option>';
+            allSuppliers.forEach(prov => {
+                proveedorFilter.innerHTML += `<option value="${prov.id}">${prov.nombre}</option>`;
+            });
+        }
+
+        // Filtrar productos
+        function filterProducts() {
+            const searchTerm = document.getElementById('producto-search').value.toLowerCase();
+            const categoriaId = document.getElementById('producto-categoria-filter').value;
+            const stockFilter = document.getElementById('producto-stock-filter').value;
+            const proveedorId = document.getElementById('producto-proveedor-filter').value;
+
+            let productosFiltrados = allProducts;
+
+            // Filtro por búsqueda
+            if (searchTerm) {
+                productosFiltrados = productosFiltrados.filter(producto => 
+                    producto.nombre.toLowerCase().includes(searchTerm) ||
+                    (producto.codigo_sku && producto.codigo_sku.toLowerCase().includes(searchTerm)) ||
+                    (producto.descripcion && producto.descripcion.toLowerCase().includes(searchTerm))
+                );
+            }
+
+            // Filtro por categoría
+            if (categoriaId) {
+                productosFiltrados = productosFiltrados.filter(producto => 
+                    producto.categoria_id === parseInt(categoriaId)
+                );
+            }
+
+            // Filtro por proveedor
+            if (proveedorId) {
+                productosFiltrados = productosFiltrados.filter(producto => 
+                    producto.proveedor_id === parseInt(proveedorId)
+                );
+            }
+
+            // Filtro por stock
+            if (stockFilter) {
+                if (stockFilter === 'bajo') {
+                    productosFiltrados = productosFiltrados.filter(producto => 
+                        producto.cantidad_stock <= producto.stock_minimo && producto.cantidad_stock > 0
+                    );
+                } else if (stockFilter === 'critico') {
+                    productosFiltrados = productosFiltrados.filter(producto => 
+                        producto.cantidad_stock === 0
+                    );
+                } else if (stockFilter === 'normal') {
+                    productosFiltrados = productosFiltrados.filter(producto => 
+                        producto.cantidad_stock > producto.stock_minimo
+                    );
+                }
+            }
+
+            displayData('productos', productosFiltrados);
+        }
+
+        // Limpiar filtros
+        function clearFilters() {
+            document.getElementById('producto-search').value = '';
+            document.getElementById('producto-categoria-filter').value = '';
+            document.getElementById('producto-stock-filter').value = '';
+            document.getElementById('producto-proveedor-filter').value = '';
+            displayData('productos', allProducts);
+        }
+
+        // Mostrar datos en las tablas
+        function displayData(type, data) {
+            const container = document.getElementById(`${type}-list`);
+            
+            if (data.length === 0) {
+                container.innerHTML = '<div class="loading">No hay datos disponibles</div>';
+                return;
+            }
+
+            let html = '';
+            
+            if (type === 'productos') {
+                // Mostrar productos en tarjetas
+                html = '<div class="product-cards">';
+                data.forEach(item => {
+                    const stockClass = item.cantidad_stock <= item.stock_minimo ? 
+                        (item.cantidad_stock === 0 ? 'stock-critical' : 'stock-low') : '';
+                    
+                    html += `
+                        <div class="product-card ${stockClass}">
+                            <div class="product-header">
+                                <h3 class="product-name">${item.nombre}</h3>
+                                ${item.codigo_sku ? `<span class="product-sku">${item.codigo_sku}</span>` : ''}
+                            </div>
+                            <div class="product-info">
+                                <div class="product-price">$${item.precio.toFixed(2)}</div>
+                                <div class="product-stock">
+                                    <span class="badge ${item.cantidad_stock <= item.stock_minimo ? 'badge-danger' : 'badge-success'}">
+                                        Stock: ${item.cantidad_stock}
+                                    </span>
+                                    ${item.cantidad_stock <= item.stock_minimo ? '⚠️' : ''}
+                                </div>
+                                <div class="product-category">${item.categoria_nombre || 'Sin categoría'}</div>
+                                ${item.proveedor_nombre ? `<div style="font-size: 0.8em; color: #666; margin-top: 5px;">Proveedor: ${item.proveedor_nombre}</div>` : ''}
+                            </div>
+                            <div class="product-actions">
+                                <button onclick="editProducto(${item.id})" class="btn-warning">Editar</button>
+                                <button onclick="deleteProducto(${item.id})" class="btn-danger">Eliminar</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            } else {
+                // Mostrar otros datos en tabla
+                html = '<table><thead><tr>';
+                
+                if (type === 'categorias') {
+                    html += '<th>Nombre</th><th>Descripción</th><th>Fecha Creación</th><th>Acciones</th>';
+                    html += '</tr></thead><tbody>';
+                    
+                    data.forEach(item => {
+                        html += `
+                            <tr>
+                                <td>${item.nombre}</td>
+                                <td>${item.descripcion || '-'}</td>
+                                <td>${new Date(item.fecha_creacion).toLocaleDateString()}</td>
+                                <td>
+                                    <button onclick="editCategoria(${item.id})" class="btn-warning">Editar</button>
+                                    <button onclick="deleteCategoria(${item.id})" class="btn-danger">Eliminar</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                } else if (type === 'proveedores') {
+                    html += '<th>Nombre</th><th>Contacto</th><th>Email</th><th>Teléfono</th><th>Acciones</th>';
+                    html += '</tr></thead><tbody>';
+                    
+                    data.forEach(item => {
+                        html += `
+                            <tr>
+                                <td>${item.nombre}</td>
+                                <td>${item.contacto || '-'}</td>
+                                <td>${item.email || '-'}</td>
+                                <td>${item.telefono || '-'}</td>
+                                <td>
+                                    <button onclick="editProveedor(${item.id})" class="btn-warning">Editar</button>
+                                    <button onclick="deleteProveedor(${item.id})" class="btn-danger">Eliminar</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                } else if (type === 'movimientos') {
+                    html += '<th>Producto</th><th>Tipo</th><th>Cantidad</th><th>Motivo</th><th>Referencia</th><th>Fecha</th>';
+                    html += '</tr></thead><tbody>';
+                    
+                    data.forEach(item => {
+                        const tipoClass = item.tipo_movimiento === 'ENTRADA' ? 'badge-success' : 'badge-warning';
+                        html += `
+                            <tr>
+                                <td>${item.producto_nombre}</td>
+                                <td><span class="badge ${tipoClass}">${item.tipo_movimiento}</span></td>
+                                <td>${item.cantidad}</td>
+                                <td>${item.motivo || '-'}</td>
+                                <td>${item.numero_referencia || '-'}</td>
+                                <td>${new Date(item.fecha_movimiento).toLocaleString()}</td>
+                            </tr>
+                        `;
+                    });
+                }
+                
+                html += '</tbody></table>';
+            }
+            
+            container.innerHTML = html;
+        }
+
+        // Cargar stock bajo
+        async function loadStockBajo() {
+            try {
+                const data = await apiRequest('/reportes/stock-bajo');
+                displayStockBajo(data);
+                showStatus('Reporte de stock bajo generado');
+            } catch (error) {
+                showStatus('Error generando reporte', 'error');
+            }
+        }
+
+        // Mostrar stock bajo
+        function displayStockBajo(data) {
+            const container = document.getElementById('reportes-list');
+            
+            if (data.length === 0) {
+                container.innerHTML = '<div class="loading">✅ No hay productos con stock bajo</div>';
+                return;
+            }
+
+            let html = '<table><thead><tr><th>Producto</th><th>SKU</th><th>Stock Actual</th><th>Stock Mínimo</th><th>Diferencia</th><th>Categoría</th></tr></thead><tbody>';
+            
+            data.forEach(item => {
+                const diferencia = item.diferencia;
+                const stockClass = diferencia < 0 ? 'stock-critical' : 'stock-low';
+                
+                html += `
+                    <tr class="${stockClass}">
+                        <td>${item.nombre}</td>
+                        <td>${item.codigo_sku || '-'}</td>
+                        <td><span class="badge badge-danger">${item.cantidad_stock}</span></td>
+                        <td>${item.stock_minimo}</td>
+                        <td>${diferencia}</td>
+                        <td>${item.categoria_nombre || '-'}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        // Cargar opciones para selects
+        async function loadSelectOptions() {
+            try {
+                const [categorias, proveedores, productos] = await Promise.all([
+                    apiRequest('/categorias'),
+                    apiRequest('/proveedores'),
+                    apiRequest('/productos')
+                ]);
+
+                // Guardar datos globalmente
+                allCategories = categorias;
+                allSuppliers = proveedores;
+                allProducts = productos;
+
+                // Cargar categorías
+                const categoriaSelect = document.getElementById('producto-categoria');
+                categoriaSelect.innerHTML = '<option value="">Seleccionar categoría...</option>';
+                categorias.forEach(cat => {
+                    categoriaSelect.innerHTML += `<option value="${cat.id}">${cat.nombre}</option>`;
+                });
+
+                // Cargar proveedores
+                const proveedorSelect = document.getElementById('producto-proveedor');
+                proveedorSelect.innerHTML = '<option value="">Seleccionar proveedor...</option>';
+                proveedores.forEach(prov => {
+                    proveedorSelect.innerHTML += `<option value="${prov.id}">${prov.nombre}</option>`;
+                });
+
+                // Cargar productos para movimientos
+                const productoSelect = document.getElementById('movimiento-producto');
+                productoSelect.innerHTML = '<option value="">Seleccionar producto...</option>';
+                productos.forEach(prod => {
+                    productoSelect.innerHTML += `<option value="${prod.id}">${prod.nombre}</option>`;
+                });
+
+            } catch (error) {
+                console.error('Error cargando opciones:', error);
+            }
+        }
+
+        // Funciones placeholder para editar/eliminar (necesarias para que no den error)
+        function editProducto(id) {
+            showStatus('Función de editar producto en desarrollo', 'warning');
+        }
+
+        function deleteProducto(id) {
+            if (confirm('¿Estás seguro de que quieres eliminar este producto?')) {
+                showStatus('Función de eliminar producto en desarrollo', 'warning');
+            }
+        }
+
+        function editCategoria(id) {
+            showStatus('Función de editar categoría en desarrollo', 'warning');
+        }
+
+        function deleteCategoria(id) {
+            if (confirm('¿Estás seguro de que quieres eliminar esta categoría?')) {
+                showStatus('Función de eliminar categoría en desarrollo', 'warning');
+            }
+        }
+
+        function editProveedor(id) {
+            showStatus('Función de editar proveedor en desarrollo', 'warning');
+        }
+
+        function deleteProveedor(id) {
+            if (confirm('¿Estás seguro de que quieres eliminar este proveedor?')) {
+                showStatus('Función de eliminar proveedor en desarrollo', 'warning');
+            }
+        }
+
+        // Crear producto
+        async function createProducto(productoData) {
+            try {
+                const newProducto = await apiRequest('/productos', 'POST', productoData);
+                showStatus('Producto creado correctamente');
+                loadData('productos');
+                return newProducto;
+            } catch (error) {
+                showStatus('Error creando producto', 'error');
+            }
+        }
+
+        // Crear categoría
+        async function createCategoria(categoriaData) {
+            try {
+                const newCategoria = await apiRequest('/categorias', 'POST', categoriaData);
+                showStatus('Categoría creada correctamente');
+                loadData('categorias');
+                loadSelectOptions(); // Recargar opciones
+                return newCategoria;
+            } catch (error) {
+                showStatus('Error creando categoría', 'error');
+            }
+        }
+
+        // Crear proveedor
+        async function createProveedor(proveedorData) {
+            try {
+                const newProveedor = await apiRequest('/proveedores', 'POST', proveedorData);
+                showStatus('Proveedor creado correctamente');
+                loadData('proveedores');
+                loadSelectOptions(); // Recargar opciones
+                return newProveedor;
+            } catch (error) {
+                showStatus('Error creando proveedor', 'error');
+            }
+        }
+
+        // Crear movimiento
+        async function createMovimiento(movimientoData) {
+            try {
+                const newMovimiento = await apiRequest('/movimientos', 'POST', movimientoData);
+                showStatus('Movimiento registrado correctamente');
+                loadData('movimientos');
+                loadData('productos'); // Actualizar stock
+                return newMovimiento;
+            } catch (error) {
+                showStatus('Error registrando movimiento', 'error');
+            }
+        }
+
+        // Limpiar formularios
+        function clearProductoForm() {
+            document.getElementById('productoForm').reset();
+            editingProductoId = null;
+            document.getElementById('producto-submit').textContent = 'Crear Producto';
+        }
+
+        function clearCategoriaForm() {
+            document.getElementById('categoriaForm').reset();
+        }
+
+        function clearProveedorForm() {
+            document.getElementById('proveedorForm').reset();
+        }
+
+        function clearMovimientoForm() {
+            document.getElementById('movimientoForm').reset();
+        }
+
+        // Manejar envío de formularios
+        document.getElementById('productoForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const productoData = {
+                nombre: formData.get('nombre'),
+                descripcion: formData.get('descripcion'),
+                codigo_sku: formData.get('codigo_sku'),
+                precio: parseFloat(formData.get('precio')) || 0,
+                costo: parseFloat(formData.get('costo')) || 0,
+                cantidad_stock: parseInt(formData.get('cantidad_stock')) || 0,
+                stock_minimo: parseInt(formData.get('stock_minimo')) || 5,
+                categoria_id: parseInt(formData.get('categoria_id')),
+                proveedor_id: formData.get('proveedor_id') ? parseInt(formData.get('proveedor_id')) : null
+            };
+
+            await createProducto(productoData);
+            clearProductoForm();
+        });
+
+        document.getElementById('categoriaForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const categoriaData = {
+                nombre: formData.get('nombre'),
+                descripcion: formData.get('descripcion')
+            };
+
+            await createCategoria(categoriaData);
+            clearCategoriaForm();
+        });
+
+        document.getElementById('proveedorForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const proveedorData = {
+                nombre: formData.get('nombre'),
+                contacto: formData.get('contacto'),
+                email: formData.get('email'),
+                telefono: formData.get('telefono'),
+                direccion: formData.get('direccion')
+            };
+
+            await createProveedor(proveedorData);
+            clearProveedorForm();
+        });
+
+        document.getElementById('movimientoForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const movimientoData = {
+                producto_id: parseInt(formData.get('producto_id')),
+                tipo_movimiento: formData.get('tipo_movimiento'),
+                cantidad: parseInt(formData.get('cantidad')),
+                motivo: formData.get('motivo'),
+                numero_referencia: formData.get('numero_referencia')
+            };
+
+            await createMovimiento(movimientoData);
+            clearMovimientoForm();
+        });
+
+        // Cargar datos al iniciar la página
+        window.addEventListener('load', () => {
+            loadSelectOptions();
+            loadDashboard();
+        });
+    </script>
+</body>
+</html>
