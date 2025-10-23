@@ -522,43 +522,9 @@
 
             <!-- Productos -->
             <div id="productos" class="tab-content">
-                <div class="form-section">
-                    <h2>Filtros y Búsqueda</h2>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="producto-search">Buscar producto:</label>
-                            <input type="text" id="producto-search" placeholder="Nombre, SKU o descripción..." onkeyup="filterProducts()">
-                        </div>
-                        <div class="form-group">
-                            <label for="producto-categoria-filter">Filtrar por categoría:</label>
-                            <select id="producto-categoria-filter" onchange="filterProducts()">
-                                <option value="">Todas las categorías</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="producto-stock-filter">Filtrar por stock:</label>
-                            <select id="producto-stock-filter" onchange="filterProducts()">
-                                <option value="">Todos</option>
-                                <option value="bajo">Stock bajo</option>
-                                <option value="critico">Stock crítico</option>
-                                <option value="normal">Stock normal</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="producto-proveedor-filter">Filtrar por proveedor:</label>
-                            <select id="producto-proveedor-filter" onchange="filterProducts()">
-                                <option value="">Todos los proveedores</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="button-group">
-                        <button onclick="clearFilters()">Limpiar Filtros</button>
-                        <button onclick="loadData('productos')">Recargar Productos</button>
-                    </div>
-                </div>
 
                 <div class="form-section">
-                    <h2>Gestión de Productos</h2>
+                    <h2>Gestión de Productos (Crear nuevo producto)</h2>
                     <form id="productoForm">
                         <div class="form-grid">
                             <div class="form-group">
@@ -604,9 +570,45 @@
                         </div>
                         <div class="button-group">
                             <button type="submit" id="producto-submit">Crear Producto</button>
-                            <button type="button" onclick="clearProductoForm()">Limpiar</button>
+                            <button type="button" onclick="clearProductoForm()" id="producto-clear">Limpiar</button>
+                            <button type="button" onclick="cancelEditProducto()" id="producto-cancel" style="display: none;" class="btn-warning">Cancelar Edición</button>
                         </div>
                     </form>
+                </div>
+
+                <div class="form-section">
+                    <h2>Filtros y Búsqueda</h2>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="producto-search">Buscar producto:</label>
+                            <input type="text" id="producto-search" placeholder="Nombre, SKU o descripción..." onkeyup="filterProducts()">
+                        </div>
+                        <div class="form-group">
+                            <label for="producto-categoria-filter">Filtrar por categoría:</label>
+                            <select id="producto-categoria-filter" onchange="filterProducts()">
+                                <option value="">Todas las categorías</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="producto-stock-filter">Filtrar por stock:</label>
+                            <select id="producto-stock-filter" onchange="filterProducts()">
+                                <option value="">Todos</option>
+                                <option value="bajo">Stock bajo</option>
+                                <option value="critico">Stock crítico</option>
+                                <option value="normal">Stock normal</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="producto-proveedor-filter">Filtrar por proveedor:</label>
+                            <select id="producto-proveedor-filter" onchange="filterProducts()">
+                                <option value="">Todos los proveedores</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="button-group">
+                        <button onclick="loadData('productos')">Recargar Productos</button>
+                        <button onclick="clearFilters()">Limpiar Filtros</button>
+                    </div>
                 </div>
 
                 <div class="data-table">
@@ -1253,14 +1255,56 @@
             }
         }
 
-        // Funciones placeholder para editar/eliminar (necesarias para que no den error)
-        function editProducto(id) {
-            showStatus('Función de editar producto en desarrollo', 'warning');
+        // Funciones para editar/eliminar productos
+        async function editProducto(id) {
+            try {
+                // Obtener datos del producto
+                const producto = await apiRequest(`/productos/${id}`);
+                
+                // Llenar el formulario con los datos del producto
+                document.getElementById('producto-nombre').value = producto.nombre;
+                document.getElementById('producto-sku').value = producto.codigo_sku || '';
+                document.getElementById('producto-precio').value = producto.precio;
+                document.getElementById('producto-costo').value = producto.costo || 0;
+                document.getElementById('producto-stock').value = producto.cantidad_stock;
+                document.getElementById('producto-stock-min').value = producto.stock_minimo;
+                document.getElementById('producto-categoria').value = producto.categoria_id;
+                document.getElementById('producto-proveedor').value = producto.proveedor_id || '';
+                document.getElementById('producto-descripcion').value = producto.descripcion || '';
+                
+                // Cambiar el modo a edición
+                editingProductoId = id;
+                document.getElementById('producto-submit').textContent = 'Actualizar Producto';
+                document.getElementById('producto-cancel').style.display = 'inline-block';
+                document.getElementById('producto-clear').style.display = 'none';
+                
+                // Cambiar a la pestaña de productos
+                showTab('productos');
+                
+                // Scroll al formulario
+                document.getElementById('productoForm').scrollIntoView({ behavior: 'smooth' });
+                
+                showStatus('Producto cargado para edición');
+            } catch (error) {
+                showStatus('Error cargando producto para edición', 'error');
+            }
         }
 
-        function deleteProducto(id) {
+        async function deleteProducto(id) {
             if (confirm('¿Estás seguro de que quieres eliminar este producto?')) {
-                showStatus('Función de eliminar producto en desarrollo', 'warning');
+                try {
+                    await apiRequest(`/productos/${id}`, 'DELETE');
+                    showStatus('Producto eliminado correctamente');
+                    
+                    // Recargar la lista de productos
+                    if (document.getElementById('productos').classList.contains('active')) {
+                        loadData('productos');
+                    } else {
+                        loadDashboard();
+                    }
+                } catch (error) {
+                    showStatus('Error eliminando producto', 'error');
+                }
             }
         }
 
@@ -1293,6 +1337,18 @@
                 return newProducto;
             } catch (error) {
                 showStatus('Error creando producto', 'error');
+            }
+        }
+
+        // Actualizar producto
+        async function updateProducto(id, productoData) {
+            try {
+                const updatedProducto = await apiRequest(`/productos/${id}`, 'PUT', productoData);
+                showStatus('Producto actualizado correctamente');
+                loadData('productos');
+                return updatedProducto;
+            } catch (error) {
+                showStatus('Error actualizando producto', 'error');
             }
         }
 
@@ -1340,6 +1396,14 @@
             document.getElementById('productoForm').reset();
             editingProductoId = null;
             document.getElementById('producto-submit').textContent = 'Crear Producto';
+            document.getElementById('producto-cancel').style.display = 'none';
+            document.getElementById('producto-clear').style.display = 'inline-block';
+        }
+
+        // Cancelar edición
+        function cancelEditProducto() {
+            clearProductoForm();
+            showStatus('Edición cancelada');
         }
 
         function clearCategoriaForm() {
@@ -1371,7 +1435,14 @@
                 proveedor_id: formData.get('proveedor_id') ? parseInt(formData.get('proveedor_id')) : null
             };
 
-            await createProducto(productoData);
+            if (editingProductoId) {
+                // Modo edición
+                await updateProducto(editingProductoId, productoData);
+            } else {
+                // Modo creación
+                await createProducto(productoData);
+            }
+            
             clearProductoForm();
         });
 
