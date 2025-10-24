@@ -1,3 +1,4 @@
 Flask==1.1.4
 Flask-CORS==3.0.10
 pyodbc==4.0.39
+PyJWT==2.4.0

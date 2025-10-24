@@ -731,8 +731,28 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>📦 Sistema de Gestión de Inventario</h1>
-            <p>Gestiona productos, categorías, proveedores y movimientos de stock</p>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h1>📦 Sistema de Gestión de Inventario</h1>
+                    <p>Gestiona productos, categorías, proveedores y movimientos de stock</p>
+                </div>
+                <div style="text-align: right;">
+                    <div id="user-info" style="margin-bottom: 10px; font-size: 14px; opacity: 0.9;"></div>
+                    <button onclick="logout()" style="
+                        background: rgba(255,255,255,0.2);
+                        border: 1px solid rgba(255,255,255,0.3);
+                        color: white;
+                        padding: 8px 15px;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-size: 14px;
+                        transition: all 0.3s ease;
+                    " onmouseover="this.style.background='rgba(255,255,255,0.3)'" 
+                       onmouseout="this.style.background='rgba(255,255,255,0.2)'">
+                        🚪 Cerrar Sesión
+                    </button>
+                </div>
+            </div>
         </div>
         
         <div class="content">
@@ -956,6 +976,69 @@
         let allProducts = [];
         let allCategories = [];
         let allSuppliers = [];
+        let currentUser = null;
+
+        // Verificar autenticación al cargar
+        function checkAuth() {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                window.location.href = 'login.html';
+                return false;
+            }
+            return true;
+        }
+
+        // Función para hacer peticiones autenticadas
+        async function authenticatedRequest(endpoint, method = 'GET', data = null) {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            try {
+                const options = {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                };
+
+                if (data) {
+                    options.body = JSON.stringify(data);
+                }
+
+                const response = await fetch(`${API_BASE}${endpoint}`, options);
+                
+                if (response.status === 401) {
+                    // Token expirado o inválido
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('userInfo');
+                    window.location.href = 'login.html';
+                    return;
+                }
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Error del servidor:', errorText);
+                    throw new Error(`Error ${response.status}: ${response.statusText}`);
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error('Error en la petición:', error);
+                showStatus(`Error: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        // Función de logout
+        function logout() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userInfo');
+            window.location.href = 'login.html';
+        }
 
         // Mostrar mensajes
         function showStatus(message, type = 'success') {
@@ -993,34 +1076,9 @@
             }, 3000);
         }
 
-        // Hacer peticiones a la API
+        // Función legacy para compatibilidad (ahora usa autenticación)
         async function apiRequest(endpoint, method = 'GET', data = null) {
-            try {
-                const options = {
-                    method,
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                };
-
-                if (data) {
-                    options.body = JSON.stringify(data);
-                }
-
-                const response = await fetch(`${API_BASE}${endpoint}`, options);
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Error del servidor:', errorText);
-                    throw new Error(`Error ${response.status}: ${response.statusText}`);
-                }
-
-                return await response.json();
-            } catch (error) {
-                console.error('Error en la petición:', error);
-                showStatus(`Error: ${error.message}`, 'error');
-                throw error;
-            }
+            return await authenticatedRequest(endpoint, method, data);
         }
 
         // Cambiar pestañas
@@ -1776,6 +1834,24 @@
         // Cargar datos al iniciar con animaciones
         window.addEventListener('load', async () => {
             try {
+                // Verificar autenticación
+                if (!checkAuth()) {
+                    return;
+                }
+
+                // Cargar información del usuario
+                const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+                currentUser = userInfo;
+                
+                // Mostrar información del usuario
+                const userInfoDiv = document.getElementById('user-info');
+                if (userInfo.username) {
+                    userInfoDiv.innerHTML = `
+                        <div>👤 ${userInfo.username}</div>
+                        <div style="font-size: 12px; opacity: 0.8;">${userInfo.rol || 'usuario'}</div>
+                    `;
+                }
+
                 // Mostrar loading general
                 showStatus('🚀 Iniciando sistema de inventario...', 'success');
                 

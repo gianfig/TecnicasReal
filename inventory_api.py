@@ -4,10 +4,18 @@ import pyodbc
 import uuid
 from datetime import datetime
 from decimal import Decimal
+import hashlib
+import jwt
+import os
+from functools import wraps
 
 # Crear la aplicación Flask
 app = Flask(__name__)
 CORS(app)  # Permitir CORS para el frontend
+
+# Configuración para JWT
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'tu-clave-secreta-super-segura-2024')
+JWT_SECRET = app.config['SECRET_KEY']
 
 # Configuración de la base de datos SQL Server
 DB_CONFIG = {
@@ -40,7 +48,7 @@ def init_database():
             cursor = conn.cursor()
             cursor.execute("SELECT COUNT(*) FROM Categorias")
             count = cursor.fetchone()[0]
-            print(f"✅ Conexión exitosa a InventarioDB. Categorías encontradas: {count}")
+            print(f"[OK] Conexion exitosa a InventarioDB. Categorias encontradas: {count}")
             conn.close()
             return True
         except Exception as e:
@@ -49,8 +57,168 @@ def init_database():
             return False
     return False
 
+def init_users_table():
+    """Crear tabla de usuarios si no existe y agregar usuario admin por defecto"""
+    conn = get_db_connection()
+    if not conn:
+        return False
+    
+    try:
+        cursor = conn.cursor()
+        
+        # Crear tabla de usuarios si no existe
+        cursor.execute("""
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Usuarios' AND xtype='U')
+            CREATE TABLE Usuarios (
+                id INT IDENTITY(1,1) PRIMARY KEY,
+                username NVARCHAR(50) UNIQUE NOT NULL,
+                password_hash NVARCHAR(255) NOT NULL,
+                rol NVARCHAR(20) DEFAULT 'usuario',
+                activo BIT DEFAULT 1,
+                fecha_creacion DATETIME DEFAULT GETDATE()
+            )
+        """)
+        
+        # Verificar si existe el usuario admin
+        cursor.execute("SELECT COUNT(*) FROM Usuarios WHERE username = 'admin'")
+        admin_exists = cursor.fetchone()[0]
+        
+        if admin_exists == 0:
+            # Crear usuario admin por defecto
+            admin_password = "admin123"
+            password_hash = hashlib.sha256(admin_password.encode()).hexdigest()
+            
+            cursor.execute("""
+                INSERT INTO Usuarios (username, password_hash, rol, activo)
+                VALUES (?, ?, 'admin', 1)
+            """, 'admin', password_hash)
+            
+            print("[OK] Usuario admin creado con contraseña: admin123")
+        
+        conn.commit()
+        conn.close()
+        return True
+        
+    except Exception as e:
+        print(f"Error inicializando tabla de usuarios: {e}")
+        conn.close()
+        return False
+
+def hash_password(password):
+    """Crear hash de contraseña"""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_password(password, password_hash):
+    """Verificar contraseña"""
+    return hash_password(password) == password_hash
+
+def generate_token(user_id, username, rol):
+    """Generar token JWT"""
+    payload = {
+        'user_id': user_id,
+        'username': username,
+        'rol': rol,
+        'exp': datetime.utcnow().timestamp() + 86400  # 24 horas
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
+
+def verify_token(token):
+    """Verificar token JWT"""
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=['HS256'])
+        return payload
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.InvalidTokenError:
+        return None
+
+def require_auth(f):
+    """Decorador para requerir autenticación"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        token = request.headers.get('Authorization')
+        if not token:
+            return jsonify({'error': 'Token de autorización requerido'}), 401
+        
+        if token.startswith('Bearer '):
+            token = token[7:]
+        
+        payload = verify_token(token)
+        if not payload:
+            return jsonify({'error': 'Token inválido o expirado'}), 401
+        
+        request.current_user = payload
+        return f(*args, **kwargs)
+    
+    return decorated_function
+
 # Inicializar la base de datos al arrancar
 init_database()
+init_users_table()
+
+# ==================== ENDPOINTS DE AUTENTICACIÓN ====================
+
+@app.route('/auth/login', methods=['POST'])
+def login():
+    """Endpoint de login"""
+    data = request.get_json()
+    
+    if not data or 'username' not in data or 'password' not in data:
+        return jsonify({'error': 'Username y password son requeridos'}), 400
+    
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Error de conexión a la base de datos'}), 500
+    
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, username, password_hash, rol, activo 
+            FROM Usuarios 
+            WHERE username = ? AND activo = 1
+        """, data['username'])
+        
+        user = cursor.fetchone()
+        conn.close()
+        
+        if user and verify_password(data['password'], user[2]):
+            token = generate_token(user[0], user[1], user[3])
+            return jsonify({
+                'token': token,
+                'user': {
+                    'id': user[0],
+                    'username': user[1],
+                    'rol': user[3]
+                },
+                'message': 'Login exitoso'
+            })
+        else:
+            return jsonify({'error': 'Credenciales inválidas'}), 401
+            
+    except Exception as e:
+        conn.close()
+        return jsonify({'error': f'Error en login: {str(e)}'}), 500
+
+@app.route('/auth/verify', methods=['GET'])
+def verify_auth():
+    """Verificar si el token es válido"""
+    token = request.headers.get('Authorization')
+    if not token:
+        return jsonify({'error': 'Token requerido'}), 401
+    
+    if token.startswith('Bearer '):
+        token = token[7:]
+    
+    payload = verify_token(token)
+    if payload:
+        return jsonify({'valid': True, 'user': payload})
+    else:
+        return jsonify({'valid': False, 'error': 'Token inválido'}), 401
+
+@app.route('/auth/logout', methods=['POST'])
+def logout():
+    """Endpoint de logout (solo para limpiar token del cliente)"""
+    return jsonify({'message': 'Logout exitoso'})
 
 # ==================== ENDPOINTS DE CATEGORÍAS ====================
 
@@ -711,8 +879,8 @@ def get_stock_bajo():
         return jsonify({"error": f"Error obteniendo stock bajo: {str(e)}"}), 500
 
 if __name__ == '__main__':
-    print("🚀 Iniciando Sistema de Gestión de Inventario...")
-    print("📝 API disponible en: http://localhost:5000")
-    print("🗄️ Base de datos: SQL Server - InventarioDB")
-    print("🌐 Abre inventory.html en tu navegador para usar la interfaz")
+    print("Iniciando Sistema de Gestion de Inventario...")
+    print("API disponible en: http://localhost:5000")
+    print("Base de datos: SQL Server - InventarioDB")
+    print("Abre login.html en tu navegador para usar la interfaz")
     app.run(host='0.0.0.0', port=5000, debug=True)
