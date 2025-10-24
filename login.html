@@ -208,6 +208,68 @@
             color: #667eea;
         }
 
+        /* Toggle entre Login y Registro */
+        .auth-toggle {
+            display: flex;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 4px;
+            margin-bottom: 25px;
+        }
+
+        .auth-toggle button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            color: #666;
+        }
+
+        .auth-toggle button.active {
+            background: white;
+            color: #667eea;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        /* Formulario de registro */
+        .register-form {
+            display: none;
+        }
+
+        .register-form.active {
+            display: block;
+        }
+
+        .login-form.active {
+            display: block;
+        }
+
+        .login-form {
+            display: none;
+        }
+
+        .login-form.active {
+            display: block;
+        }
+
+        /* Confirmar contraseña */
+        .password-match {
+            color: #28a745;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .password-mismatch {
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
         /* Responsive */
         @media (max-width: 480px) {
             .login-container {
@@ -225,12 +287,19 @@
         <div class="login-header">
             <div class="login-icon">🔐</div>
             <h1>Sistema de Inventario</h1>
-            <p>Inicia sesión para continuar</p>
+            <p id="header-subtitle">Inicia sesión para continuar</p>
         </div>
 
         <div id="status-message"></div>
 
-        <form id="loginForm">
+        <!-- Toggle entre Login y Registro -->
+        <div class="auth-toggle">
+            <button id="loginToggle" class="active">Iniciar Sesión</button>
+            <button id="registerToggle">Crear Cuenta</button>
+        </div>
+
+        <!-- Formulario de Login -->
+        <form id="loginForm" class="login-form active">
             <div class="form-group">
                 <label for="username">Usuario:</label>
                 <input type="text" id="username" name="username" required placeholder="Ingresa tu usuario">
@@ -243,6 +312,29 @@
             
             <button type="submit" class="login-btn" id="loginBtn">
                 Iniciar Sesión
+            </button>
+        </form>
+
+        <!-- Formulario de Registro -->
+        <form id="registerForm" class="register-form">
+            <div class="form-group">
+                <label for="regUsername">Usuario:</label>
+                <input type="text" id="regUsername" name="username" required placeholder="Ingresa tu usuario" minlength="3">
+            </div>
+            
+            <div class="form-group">
+                <label for="regPassword">Contraseña:</label>
+                <input type="password" id="regPassword" name="password" required placeholder="Ingresa tu contraseña" minlength="6">
+            </div>
+            
+            <div class="form-group">
+                <label for="confirmPassword">Confirmar Contraseña:</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" required placeholder="Confirma tu contraseña">
+                <div id="passwordMatch" class="password-mismatch"></div>
+            </div>
+            
+            <button type="submit" class="login-btn" id="registerBtn">
+                Crear Cuenta
             </button>
         </form>
 
@@ -259,6 +351,9 @@
     <script>
         const API_BASE = 'http://localhost:5000';
         
+        // Variables globales
+        let currentMode = 'login';
+        
         // Mostrar mensajes de estado
         function showMessage(message, type = 'success') {
             const statusDiv = document.getElementById('status-message');
@@ -270,17 +365,70 @@
         }
 
         // Mostrar loading en el botón
-        function showLoading() {
-            const btn = document.getElementById('loginBtn');
+        function showLoading(buttonId, text) {
+            const btn = document.getElementById(buttonId);
             btn.disabled = true;
-            btn.innerHTML = '<div class="spinner"></div>Iniciando sesión...';
+            btn.innerHTML = `<div class="spinner"></div>${text}`;
         }
 
         // Restaurar botón
-        function restoreButton() {
-            const btn = document.getElementById('loginBtn');
+        function restoreButton(buttonId, text) {
+            const btn = document.getElementById(buttonId);
             btn.disabled = false;
-            btn.innerHTML = 'Iniciar Sesión';
+            btn.innerHTML = text;
+        }
+
+        // Toggle entre Login y Registro
+        function toggleMode(mode) {
+            currentMode = mode;
+            
+            const loginToggle = document.getElementById('loginToggle');
+            const registerToggle = document.getElementById('registerToggle');
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            const headerSubtitle = document.getElementById('header-subtitle');
+            
+            if (mode === 'login') {
+                loginToggle.classList.add('active');
+                registerToggle.classList.remove('active');
+                loginForm.classList.add('active');
+                registerForm.classList.remove('active');
+                headerSubtitle.textContent = 'Inicia sesión para continuar';
+            } else {
+                registerToggle.classList.add('active');
+                loginToggle.classList.remove('active');
+                registerForm.classList.add('active');
+                loginForm.classList.remove('active');
+                headerSubtitle.textContent = 'Crea una cuenta nueva';
+            }
+            
+            // Limpiar mensajes y formularios
+            document.getElementById('status-message').innerHTML = '';
+            document.getElementById('passwordMatch').textContent = '';
+            document.getElementById('loginForm').reset();
+            document.getElementById('registerForm').reset();
+        }
+
+        // Validar coincidencia de contraseñas
+        function validatePasswordMatch() {
+            const password = document.getElementById('regPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const matchDiv = document.getElementById('passwordMatch');
+            
+            if (confirmPassword === '') {
+                matchDiv.textContent = '';
+                return false;
+            }
+            
+            if (password === confirmPassword) {
+                matchDiv.textContent = '✓ Las contraseñas coinciden';
+                matchDiv.className = 'password-match';
+                return true;
+            } else {
+                matchDiv.textContent = '✗ Las contraseñas no coinciden';
+                matchDiv.className = 'password-mismatch';
+                return false;
+            }
         }
 
         // Función de login
@@ -309,16 +457,49 @@
                     }, 1000);
                 } else {
                     showMessage(`❌ ${data.error || 'Error en el login'}`, 'error');
-                    restoreButton();
+                    restoreButton('loginBtn', 'Iniciar Sesión');
                 }
             } catch (error) {
                 console.error('Error en login:', error);
                 showMessage('❌ Error de conexión. Verifica que el servidor esté ejecutándose.', 'error');
-                restoreButton();
+                restoreButton('loginBtn', 'Iniciar Sesión');
             }
         }
 
-        // Manejar envío del formulario
+        // Función de registro
+        async function register(username, password) {
+            try {
+                const response = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage('✅ ¡Cuenta creada exitosamente! Ahora puedes iniciar sesión.', 'success');
+                    
+                    // Cambiar a modo login después de 2 segundos
+                    setTimeout(() => {
+                        toggleMode('login');
+                        // Pre-llenar el campo de usuario
+                        document.getElementById('username').value = username;
+                    }, 2000);
+                } else {
+                    showMessage(`❌ ${data.error || 'Error en el registro'}`, 'error');
+                    restoreButton('registerBtn', 'Crear Cuenta');
+                }
+            } catch (error) {
+                console.error('Error en registro:', error);
+                showMessage('❌ Error de conexión. Verifica que el servidor esté ejecutándose.', 'error');
+                restoreButton('registerBtn', 'Crear Cuenta');
+            }
+        }
+
+        // Manejar envío del formulario de login
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -331,8 +512,31 @@
                 return;
             }
             
-            showLoading();
+            showLoading('loginBtn', 'Iniciando sesión...');
             await login(username, password);
+        });
+
+        // Manejar envío del formulario de registro
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const username = formData.get('username');
+            const password = formData.get('password');
+            const confirmPassword = formData.get('confirmPassword');
+            
+            if (!username || !password || !confirmPassword) {
+                showMessage('❌ Por favor completa todos los campos', 'error');
+                return;
+            }
+            
+            if (!validatePasswordMatch()) {
+                showMessage('❌ Las contraseñas no coinciden', 'error');
+                return;
+            }
+            
+            showLoading('registerBtn', 'Creando cuenta...');
+            await register(username, password);
         });
 
         // Verificar si ya está logueado
@@ -359,10 +563,22 @@
             }
         });
 
+        // Event listeners para toggle
+        document.getElementById('loginToggle').addEventListener('click', () => toggleMode('login'));
+        document.getElementById('registerToggle').addEventListener('click', () => toggleMode('register'));
+
+        // Validación de contraseñas en tiempo real
+        document.getElementById('confirmPassword').addEventListener('input', validatePasswordMatch);
+        document.getElementById('regPassword').addEventListener('input', validatePasswordMatch);
+
         // Enter para enviar formulario
         document.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
-                document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+                if (currentMode === 'login') {
+                    document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+                } else {
+                    document.getElementById('registerForm').dispatchEvent(new Event('submit'));
+                }
             }
         });
     </script>

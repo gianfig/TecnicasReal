@@ -199,6 +199,73 @@ def login():
         conn.close()
         return jsonify({'error': f'Error en login: {str(e)}'}), 500
 
+@app.route('/auth/register', methods=['POST'])
+def register():
+    """Endpoint para registrar nuevos usuarios"""
+    data = request.get_json()
+    
+    if not data or 'username' not in data or 'password' not in data:
+        return jsonify({'error': 'Username y password son requeridos'}), 400
+    
+    username = data['username'].strip()
+    password = data['password']
+    
+    # Validaciones básicas
+    if len(username) < 3:
+        return jsonify({'error': 'El nombre de usuario debe tener al menos 3 caracteres'}), 400
+    
+    if len(password) < 6:
+        return jsonify({'error': 'La contraseña debe tener al menos 6 caracteres'}), 400
+    
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({'error': 'Error de conexión a la base de datos'}), 500
+    
+    try:
+        cursor = conn.cursor()
+        
+        # Verificar si el usuario ya existe
+        cursor.execute("SELECT COUNT(*) FROM Usuarios WHERE username = ?", username)
+        user_exists = cursor.fetchone()[0]
+        
+        if user_exists > 0:
+            conn.close()
+            return jsonify({'error': 'El nombre de usuario ya existe'}), 409
+        
+        # Crear hash de la contraseña
+        password_hash = hash_password(password)
+        
+        # Insertar nuevo usuario
+        cursor.execute("""
+            INSERT INTO Usuarios (username, password_hash, rol, activo)
+            VALUES (?, ?, 'usuario', 1)
+        """, username, password_hash)
+        
+        conn.commit()
+        
+        # Obtener el usuario creado
+        cursor.execute("""
+            SELECT id, username, rol, activo, fecha_creacion 
+            FROM Usuarios 
+            WHERE username = ?
+        """, username)
+        
+        user = cursor.fetchone()
+        conn.close()
+        
+        return jsonify({
+            'message': 'Usuario registrado exitosamente',
+            'user': {
+                'id': user[0],
+                'username': user[1],
+                'rol': user[2]
+            }
+        }), 201
+        
+    except Exception as e:
+        conn.close()
+        return jsonify({'error': f'Error registrando usuario: {str(e)}'}), 500
+
 @app.route('/auth/verify', methods=['GET'])
 def verify_auth():
     """Verificar si el token es válido"""
