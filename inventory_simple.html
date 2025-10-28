@@ -471,6 +471,68 @@
             font-size: 14px;
         }
 
+        /* Estilos para gráficos */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 25px;
+            position: relative;
+            overflow: hidden;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .chart-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .chart-header {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .chart-header h3 {
+            color: #333;
+            font-size: 1.2em;
+            margin: 0;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .chart-container canvas {
+            max-height: 300px;
+            width: 100% !important;
+            height: auto !important;
+        }
+
+        /* Responsive para gráficos */
+        @media (max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .chart-container {
+                padding: 20px;
+            }
+        }
+
         .filter-section {
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
             padding: 25px;
@@ -762,6 +824,7 @@
                 <button class="tab" onclick="showTab('productos')">Productos</button>
                 <button class="tab" onclick="showTab('categorias')">Categorías</button>
                 <button class="tab" onclick="showTab('proveedores')">Proveedores</button>
+                <button class="tab" onclick="showTab('graficos')">📊 Gráficos</button>
             </div>
 
             <!-- Dashboard -->
@@ -968,15 +1031,91 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Gráficos -->
+            <div id="graficos" class="tab-content">
+                <div class="form-section">
+                    <h2>📊 Análisis Visual del Inventario</h2>
+                    <p style="color: #666; margin-bottom: 20px;">
+                        Visualiza estadísticas importantes de tu inventario con gráficos interactivos y actualizados en tiempo real.
+                    </p>
+                    <div class="button-group">
+                        <button onclick="loadGraficos()">🔄 Actualizar Gráficos</button>
+                    </div>
+                </div>
+
+                <!-- Gráficos del Sistema -->
+                <div class="charts-grid">
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3>📊 Productos por Categoría</h3>
+                        </div>
+                        <canvas id="productosCategoriaChart"></canvas>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3>📈 Stock por Categoría</h3>
+                        </div>
+                        <canvas id="stockCategoriaChart"></canvas>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3>💰 Valor del Inventario</h3>
+                        </div>
+                        <canvas id="valorInventarioChart"></canvas>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3>📅 Movimientos Recientes (7 días)</h3>
+                        </div>
+                        <canvas id="movimientosChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Tabla de Top Productos -->
+                <div class="data-table">
+                    <div class="table-header">🏆 Top 5 Productos con Mayor Stock</div>
+                    <div id="top-productos-table">
+                        <div class="loading">Cargando datos...</div>
+                    </div>
+                </div>
+
+                <!-- Estadísticas Adicionales -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="valor-total-inventario">-</div>
+                        <div class="stat-label">Valor Total Inventario</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="promedio-stock">-</div>
+                        <div class="stat-label">Promedio Stock</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="productos-activos">-</div>
+                        <div class="stat-label">Productos Activos</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="rotacion-promedio">-</div>
+                        <div class="stat-label">Rotación Promedio</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <script>
         const API_BASE = 'http://localhost:5000';
         let allProducts = [];
         let allCategories = [];
         let allSuppliers = [];
         let currentUser = null;
+        let dashboardCharts = {}; // Para almacenar las instancias de los gráficos
 
         // Verificar autenticación al cargar
         function checkAuth() {
@@ -1096,6 +1235,8 @@
             
             if (tabName === 'dashboard') {
                 loadDashboard();
+            } else if (tabName === 'graficos') {
+                loadGraficos();
             }
         }
 
@@ -1178,6 +1319,333 @@
             }
             
             requestAnimationFrame(updateNumber);
+        }
+
+        // Cargar gráficos con estadísticas avanzadas
+        async function loadGraficos() {
+            try {
+                // Mostrar loading en gráficos
+                showLoading('top-productos-table', 'Cargando gráficos...');
+                
+                const dashboardStats = await apiRequest('/reportes/dashboard-stats');
+                
+                // Crear gráficos
+                createDashboardCharts(dashboardStats);
+                
+                // Mostrar tabla de top productos
+                displayTopProductos(dashboardStats.top_productos_stock);
+                
+                // Calcular y mostrar estadísticas adicionales
+                calcularEstadisticasAdicionales(dashboardStats);
+                
+                showStatus('✅ Gráficos actualizados correctamente');
+            } catch (error) {
+                showStatus('❌ Error cargando gráficos', 'error');
+            }
+        }
+
+        // Calcular estadísticas adicionales para la sección de gráficos
+        function calcularEstadisticasAdicionales(dashboardStats) {
+            // Calcular valor total del inventario
+            const valorTotal = dashboardStats.valor_por_categoria.reduce((sum, item) => sum + item.valor, 0);
+            animateNumber('valor-total-inventario', `$${valorTotal.toLocaleString()}`);
+            
+            // Calcular promedio de stock
+            const stockTotal = dashboardStats.stock_por_categoria.reduce((sum, item) => sum + item.stock, 0);
+            const promedioStock = stockTotal / dashboardStats.stock_por_categoria.length;
+            animateNumber('promedio-stock', Math.round(promedioStock));
+            
+            // Mostrar productos activos
+            animateNumber('productos-activos', dashboardStats.estadisticas_generales.total_productos);
+            
+            // Calcular rotación promedio (simplificado)
+            const movimientosTotal = dashboardStats.movimientos_recientes.reduce((sum, item) => sum + item.entradas + item.salidas, 0);
+            const rotacionPromedio = movimientosTotal / 7; // promedio diario de los últimos 7 días
+            animateNumber('rotacion-promedio', Math.round(rotacionPromedio));
+        }
+
+        // Función para exportar gráficos (placeholder)
+        function exportarGraficos() {
+            showStatus('📥 Función de exportación en desarrollo', 'warning');
+            // Aquí se podría implementar la exportación a PDF o imagen
+        }
+
+        // Crear gráficos del dashboard
+        function createDashboardCharts(dashboardStats) {
+            // Destruir gráficos existentes si los hay
+            Object.values(dashboardCharts).forEach(chart => {
+                if (chart) chart.destroy();
+            });
+            dashboardCharts = {};
+
+            // Colores para los gráficos
+            const colors = {
+                primary: '#667eea',
+                secondary: '#764ba2',
+                success: '#28a745',
+                warning: '#ffc107',
+                danger: '#dc3545',
+                info: '#17a2b8',
+                light: '#f8f9fa',
+                dark: '#343a40'
+            };
+
+            // 1. Gráfico de barras - Productos por categoría
+            const productosCtx = document.getElementById('productosCategoriaChart').getContext('2d');
+            dashboardCharts.productosCategoria = new Chart(productosCtx, {
+                type: 'bar',
+                data: {
+                    labels: dashboardStats.productos_por_categoria.map(item => item.categoria),
+                    datasets: [{
+                        label: 'Cantidad de Productos',
+                        data: dashboardStats.productos_por_categoria.map(item => item.cantidad),
+                        backgroundColor: [
+                            colors.primary,
+                            colors.secondary,
+                            colors.success,
+                            colors.warning,
+                            colors.danger,
+                            colors.info
+                        ],
+                        borderColor: [
+                            colors.primary,
+                            colors.secondary,
+                            colors.success,
+                            colors.warning,
+                            colors.danger,
+                            colors.info
+                        ],
+                        borderWidth: 2,
+                        borderRadius: 8,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#e1e5e9'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 2000,
+                        easing: 'easeInOutQuart'
+                    }
+                }
+            });
+
+            // 2. Gráfico de líneas - Stock por categoría
+            const stockCtx = document.getElementById('stockCategoriaChart').getContext('2d');
+            dashboardCharts.stockCategoria = new Chart(stockCtx, {
+                type: 'line',
+                data: {
+                    labels: dashboardStats.stock_por_categoria.map(item => item.categoria),
+                    datasets: [{
+                        label: 'Stock Total',
+                        data: dashboardStats.stock_por_categoria.map(item => item.stock),
+                        borderColor: colors.success,
+                        backgroundColor: colors.success + '20',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: colors.success,
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#e1e5e9'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 2000,
+                        easing: 'easeInOutQuart'
+                    }
+                }
+            });
+
+            // 3. Gráfico de dona - Valor del inventario por categoría
+            const valorCtx = document.getElementById('valorInventarioChart').getContext('2d');
+            dashboardCharts.valorInventario = new Chart(valorCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: dashboardStats.valor_por_categoria.map(item => item.categoria),
+                    datasets: [{
+                        data: dashboardStats.valor_por_categoria.map(item => item.valor),
+                        backgroundColor: [
+                            colors.primary,
+                            colors.secondary,
+                            colors.success,
+                            colors.warning,
+                            colors.danger,
+                            colors.info
+                        ],
+                        borderColor: '#fff',
+                        borderWidth: 3,
+                        hoverOffset: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 2000,
+                        easing: 'easeInOutQuart'
+                    }
+                }
+            });
+
+            // 4. Gráfico de líneas - Movimientos recientes
+            const movimientosCtx = document.getElementById('movimientosChart').getContext('2d');
+            dashboardCharts.movimientos = new Chart(movimientosCtx, {
+                type: 'line',
+                data: {
+                    labels: dashboardStats.movimientos_recientes.map(item => 
+                        new Date(item.fecha).toLocaleDateString('es-ES', { 
+                            month: 'short', 
+                            day: 'numeric' 
+                        })
+                    ),
+                    datasets: [
+                        {
+                            label: 'Entradas',
+                            data: dashboardStats.movimientos_recientes.map(item => item.entradas),
+                            borderColor: colors.success,
+                            backgroundColor: colors.success + '20',
+                            borderWidth: 3,
+                            fill: false,
+                            tension: 0.4,
+                            pointBackgroundColor: colors.success,
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            pointRadius: 5
+                        },
+                        {
+                            label: 'Salidas',
+                            data: dashboardStats.movimientos_recientes.map(item => item.salidas),
+                            borderColor: colors.danger,
+                            backgroundColor: colors.danger + '20',
+                            borderWidth: 3,
+                            fill: false,
+                            tension: 0.4,
+                            pointBackgroundColor: colors.danger,
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            pointRadius: 5
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#e1e5e9'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 2000,
+                        easing: 'easeInOutQuart'
+                    }
+                }
+            });
+        }
+
+        // Mostrar tabla de top productos
+        function displayTopProductos(topProductos) {
+            const container = document.getElementById('top-productos-table');
+            
+            if (topProductos.length === 0) {
+                container.innerHTML = `
+                    <div class="loading">
+                        <div style="font-size: 3em; margin-bottom: 20px;">🏆</div>
+                        <div>No hay productos disponibles</div>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '<table><thead><tr>';
+            html += '<th>🏆 Posición</th><th>📦 Producto</th><th>📊 Stock</th><th>📂 Categoría</th>';
+            html += '</tr></thead><tbody>';
+            
+            topProductos.forEach((producto, index) => {
+                const position = index + 1;
+                const medal = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : '🏅';
+                
+                html += `
+                    <tr style="animation-delay: ${index * 0.1}s">
+                        <td><strong>${medal} ${position}°</strong></td>
+                        <td><strong>${producto.producto}</strong></td>
+                        <td>
+                            <span class="badge badge-success">${producto.stock}</span>
+                        </td>
+                        <td>${producto.categoria}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            container.innerHTML = html;
         }
 
         // Cargar filtros

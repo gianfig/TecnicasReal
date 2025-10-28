@@ -909,6 +909,129 @@ def create_movimiento():
 
 # ==================== ENDPOINTS DE REPORTES ====================
 
+@app.route('/reportes/dashboard-stats', methods=['GET'])
+def get_dashboard_stats():
+    """Obtener estadísticas para el dashboard con gráficos"""
+    conn = get_db_connection()
+    if not conn:
+        return jsonify({"error": "Error de conexión a la base de datos"}), 500
+    
+    try:
+        cursor = conn.cursor()
+        
+        # Estadísticas generales
+        cursor.execute("SELECT COUNT(*) FROM Productos WHERE activo = 1")
+        total_productos = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT COUNT(*) FROM Productos WHERE cantidad_stock <= stock_minimo AND activo = 1")
+        stock_bajo = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT COUNT(*) FROM Categorias")
+        total_categorias = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT COUNT(*) FROM Proveedores")
+        total_proveedores = cursor.fetchone()[0]
+        
+        # Productos por categoría (para gráfico de barras)
+        cursor.execute("""
+            SELECT c.nombre, COUNT(p.id) as cantidad
+            FROM Categorias c
+            LEFT JOIN Productos p ON c.id = p.categoria_id AND p.activo = 1
+            GROUP BY c.id, c.nombre
+            ORDER BY cantidad DESC
+        """)
+        productos_por_categoria = []
+        for row in cursor.fetchall():
+            productos_por_categoria.append({
+                'categoria': row[0],
+                'cantidad': row[1]
+            })
+        
+        # Stock por categoría (para gráfico de líneas)
+        cursor.execute("""
+            SELECT c.nombre, SUM(p.cantidad_stock) as stock_total
+            FROM Categorias c
+            LEFT JOIN Productos p ON c.id = p.categoria_id AND p.activo = 1
+            GROUP BY c.id, c.nombre
+            ORDER BY stock_total DESC
+        """)
+        stock_por_categoria = []
+        for row in cursor.fetchall():
+            stock_por_categoria.append({
+                'categoria': row[0],
+                'stock': row[1] or 0
+            })
+        
+        # Movimientos recientes (últimos 7 días)
+        cursor.execute("""
+            SELECT CAST(fecha_movimiento AS DATE) as fecha, 
+                   SUM(CASE WHEN tipo_movimiento = 'ENTRADA' THEN cantidad ELSE 0 END) as entradas,
+                   SUM(CASE WHEN tipo_movimiento = 'SALIDA' THEN cantidad ELSE 0 END) as salidas
+            FROM MovimientosStock
+            WHERE fecha_movimiento >= DATEADD(day, -7, GETDATE())
+            GROUP BY CAST(fecha_movimiento AS DATE)
+            ORDER BY fecha
+        """)
+        movimientos_recientes = []
+        for row in cursor.fetchall():
+            movimientos_recientes.append({
+                'fecha': row[0].isoformat(),
+                'entradas': row[1] or 0,
+                'salidas': row[2] or 0
+            })
+        
+        # Top 5 productos con más stock
+        cursor.execute("""
+            SELECT TOP 5 p.nombre, p.cantidad_stock, c.nombre as categoria
+            FROM Productos p
+            LEFT JOIN Categorias c ON p.categoria_id = c.id
+            WHERE p.activo = 1
+            ORDER BY p.cantidad_stock DESC
+        """)
+        top_productos_stock = []
+        for row in cursor.fetchall():
+            top_productos_stock.append({
+                'producto': row[0],
+                'stock': row[1],
+                'categoria': row[2] or 'Sin categoría'
+            })
+        
+        # Valor total del inventario por categoría
+        cursor.execute("""
+            SELECT c.nombre, SUM(p.cantidad_stock * p.precio) as valor_total
+            FROM Categorias c
+            LEFT JOIN Productos p ON c.id = p.categoria_id AND p.activo = 1
+            GROUP BY c.id, c.nombre
+            HAVING SUM(p.cantidad_stock * p.precio) > 0
+            ORDER BY valor_total DESC
+        """)
+        valor_por_categoria = []
+        for row in cursor.fetchall():
+            valor_por_categoria.append({
+                'categoria': row[0],
+                'valor': float(row[1])
+            })
+        
+        conn.close()
+        
+        return jsonify({
+            'estadisticas_generales': {
+                'total_productos': total_productos,
+                'stock_bajo': stock_bajo,
+                'total_categorias': total_categorias,
+                'total_proveedores': total_proveedores
+            },
+            'productos_por_categoria': productos_por_categoria,
+            'stock_por_categoria': stock_por_categoria,
+            'movimientos_recientes': movimientos_recientes,
+            'top_productos_stock': top_productos_stock,
+            'valor_por_categoria': valor_por_categoria
+        })
+        
+    except Exception as e:
+        conn.close()
+        return jsonify({"error": f"Error obteniendo estadísticas: {str(e)}"}), 500
+
 @app.route('/reportes/stock-bajo', methods=['GET'])
 def get_stock_bajo():
     """Obtener productos con stock bajo"""
